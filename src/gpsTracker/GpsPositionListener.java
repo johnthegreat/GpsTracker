@@ -23,16 +23,18 @@
  */
 package gpsTracker;
 
+import net.sf.marineapi.nmea.util.Position;
+
 public abstract class GpsPositionListener implements Runnable {
-    private NMEA.GPSPosition gpsPosition;
+    private Position gpsPosition;
 
     public GpsPositionListener() { }
 
-    public void setGpsPosition(NMEA.GPSPosition gpsPosition) {
+    public void setGpsPosition(Position gpsPosition) {
         this.gpsPosition = gpsPosition;
     }
 
-    public NMEA.GPSPosition getGpsPosition() {
+    public Position getGpsPosition() {
         return gpsPosition;
     }
 }

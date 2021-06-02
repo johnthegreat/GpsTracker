@@ -24,14 +24,12 @@
 package gpsTracker;
 
 import com.fazecast.jSerialComm.SerialPort;
-
-import java.io.IOException;
-import java.io.InputStream;
+import net.sf.marineapi.nmea.util.Position;
 
 public class GpsTracker {
     private final GpsTrackerConfig gpsTrackerConfig;
-    protected NMEA.GPSPosition lastPosition = null;
-    protected NMEA.GPSPosition lastPositionUploaded = null;
+    protected Position lastPosition = null;
+    protected Position lastPositionUploaded = null;
     protected SerialPort comPort;
 
     public GpsTrackerConfig getGpsTrackerConfig() {
@@ -42,29 +40,13 @@ public class GpsTracker {
         this.gpsTrackerConfig = gpsTrackerConfig;
         this.comPort = serialPort;
         this.comPort.setBaudRate(baudRate);
-        this.comPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING,2000,2000);
+        // https://github.com/Fazecast/jSerialComm/wiki/Java-InputStream-and-OutputStream-Interfacing-Usage-Example
+        // Use TIMEOUT_READ_SEMI_BLOCKING, per the docs, to get InputStream working correctly
+        this.comPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING,0,0);
         this.comPort.openPort();
     }
 
     public SerialPort getComPort() {
         return comPort;
-    }
-
-    public String readFromGpsRaw() throws IOException {
-        final InputStream in = comPort.getInputStream();
-        final StringBuilder builder = new StringBuilder(100);
-        char c;
-        do {
-            if (!comPort.isOpen()) {
-                break;
-            }
-
-            c = (char)in.read();
-            builder.append(c);
-            if (c == 10) {
-                break;
-            }
-        } while (c != 0);
-        return builder.toString().trim();
     }
 }

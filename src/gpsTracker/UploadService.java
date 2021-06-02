@@ -23,6 +23,7 @@
  */
 package gpsTracker;
 
+import net.sf.marineapi.nmea.util.Position;
 import org.json.JSONObject;
 
 import java.io.*;
@@ -40,41 +41,28 @@ public class UploadService {
 
     private UploadService() {}
 
-    public void upload(final GpsTracker gpsTracker, final NMEA.GPSPosition position) {
+    public void upload(final GpsTracker gpsTracker, final Position position) {
         if (gpsTracker == null || position == null) {
             return;
         }
 
-        final StringBuilder positionTime = new StringBuilder(String.valueOf((int) position.time));
-
-        while (positionTime.length() < 6) {
-            positionTime.insert(0, "0");
-        }
-
         final Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
-        calendar.set(Calendar.HOUR_OF_DAY, Integer.parseInt(positionTime.substring(0, 2)));
-        calendar.set(Calendar.MINUTE, Integer.parseInt(positionTime.substring(2, 4)));
-        calendar.set(Calendar.SECOND, Integer.parseInt(positionTime.substring(4, 6)));
-        calendar.setTimeZone(TimeZone.getDefault());
 
         final JSONObject jsonObject = new JSONObject();
         jsonObject.put("deviceName", gpsTracker.getGpsTrackerConfig().getDeviceName());
         jsonObject.put("timestamp", calendar.getTime().getTime() / 1000);
-        jsonObject.put("latitude", Utils.round(position.lat, 5));
-        jsonObject.put("longitude", Utils.round(position.lon, 5));
-        jsonObject.put("altitude", position.altitude);
-        jsonObject.put("velocity", position.velocity);
-        jsonObject.put("quality", position.quality);
-        jsonObject.put("direction", position.dir);
+        jsonObject.put("latitude", Utils.round(position.getLatitude(), 5));
+        jsonObject.put("longitude", Utils.round(position.getLongitude(), 5));
+        jsonObject.put("altitude", position.getAltitude());
 
         try {
             uploadJsonToUrl(gpsTracker.getGpsTrackerConfig().getUploadUrl(), jsonObject.toString());
+            gpsTracker.lastPositionUploaded = position;
             System.out.println("Uploaded");
         } catch (IOException e) {
             e.printStackTrace(System.err);
         }
-        gpsTracker.lastPositionUploaded = position;
     }
 
     private void uploadJsonToUrl(final String uploadUrl,final String json) throws IOException {

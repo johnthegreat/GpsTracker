@@ -24,13 +24,18 @@
 package gpsTracker;
 
 import com.fazecast.jSerialComm.SerialPort;
+import net.sf.marineapi.nmea.io.SentenceReader;
+import net.sf.marineapi.nmea.util.Position;
+import net.sf.marineapi.provider.PositionProvider;
+import net.sf.marineapi.provider.event.PositionEvent;
+import net.sf.marineapi.provider.event.PositionListener;
 
-import java.io.IOException;
 import java.util.*;
 
 public class Main {
 	private static boolean isShuttingDown = false;
 	private static final Set<GpsPositionListener> gpsPositionListeners = new HashSet<>();
+	private static final int differenceThresholdMeters = 33;
 
 	public static void main(String[] args) {
 		System.out.println("GpsTracker 1.0");
@@ -77,9 +82,8 @@ public class Main {
 		final SerialPort serialPort = serialPorts[0];
 
 		final GpsTracker gpsTracker = new GpsTracker(gpsTrackerConfig, serialPort, 4800);
-		
-		final Thread pollingThread = createPollingThread(gpsTracker);
-		pollingThread.start();
+
+		beginReadingFromGps(gpsTracker);
 
 		final Timer timer = new Timer();
 		final TimerTask uploadTask = createUploadTimerTask(gpsTracker);
@@ -115,7 +119,7 @@ public class Main {
 		gpsPositionListeners.add(uploadOnFirstFixListener);
 	}
 
-	public static void triggerGpsPositionListeners(NMEA.GPSPosition gpsPosition) {
+	public static void triggerGpsPositionListeners(final Position gpsPosition) {
 		if (gpsPositionListeners.size() == 0) {
 			return;
 		}
@@ -144,12 +148,12 @@ public class Main {
 					return;
 				}
 
-				final NMEA.GPSPosition position = gpsTracker.lastPosition;
+				final Position position = gpsTracker.lastPosition;
 				if (position == null) {
 					return;
 				}
 
-				if (gpsTracker.lastPositionUploaded != null && !Utils.areLocationsDifferent(gpsTracker.lastPositionUploaded, position)) {
+				if (gpsTracker.lastPositionUploaded != null && !Utils.areLocationsDifferent(gpsTracker.lastPositionUploaded, position, differenceThresholdMeters)) {
 					return;
 				}
 				UploadService.getInstance().upload(gpsTracker, position);
@@ -157,51 +161,22 @@ public class Main {
 		};
 	}
 	
-	public static Thread createPollingThread(final GpsTracker gpsTracker) {
-		return new Thread(new Runnable() {
+	public static void beginReadingFromGps(final GpsTracker gpsTracker) {
+		final SentenceReader sentenceReader = new SentenceReader(gpsTracker.getComPort().getInputStream());
+		final PositionProvider positionProvider = new PositionProvider(sentenceReader);
+		positionProvider.addListener(new PositionListener() {
 			@Override
-			public void run() {
-				while(gpsTracker.getComPort().isOpen()) {
-					if (isShuttingDown) {
-						break;
-					}
+			public void providerUpdate(PositionEvent positionEvent) {
+				final Position position = positionEvent.getPosition();
+				if (gpsTracker.lastPosition == null || Utils.areLocationsDifferent(gpsTracker.lastPosition, position, differenceThresholdMeters)) {
+					System.out.printf("%s (%f,%f)%n", Utils.formatDate(new Date()), position.getLatitude(), position.getLongitude());
 
-					String line = null;
-					try {
-						line = gpsTracker.readFromGpsRaw();
-					} catch (IOException e) {
-						e.printStackTrace(System.err);
-					}
-
-					if (line == null) {
-						continue;
-					}
-
-					NMEA.GPSPosition gpsPosition = null;
-					try {
-						gpsPosition = NMEA.parse(line);
-					} catch (Exception e) {
-						e.printStackTrace(System.err);
-					}
-
-					if (gpsPosition != null) {
-						if (!gpsPosition.fixed) {
-							continue;
-						}
-
-						if (gpsPosition.lat == 0f && gpsPosition.lon == 0f) {
-							continue;
-						}
-
-						if (gpsTracker.lastPosition == null || Utils.areLocationsDifferent(gpsTracker.lastPosition, gpsPosition)) {
-							System.out.printf("%s (%f,%f)%n", Utils.formatDate(new Date()), gpsPosition.lat, gpsPosition.lon);
-
-							gpsTracker.lastPosition = gpsPosition;
-							triggerGpsPositionListeners(gpsPosition);
-						}
-					}
+					gpsTracker.lastPosition = position;
+					triggerGpsPositionListeners(position);
 				}
 			}
 		});
+
+		sentenceReader.start();
 	}
 }

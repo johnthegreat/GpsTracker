@@ -23,38 +23,23 @@
  */
 package gpsTracker;
 
-import java.io.*;
+import net.sf.marineapi.nmea.util.Position;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLConnection;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 
 public class Utils {
-	public static double round(double value) {
-		return round(value,6);
-	}
-	
 	public static double round(double value,int precision) {
 		return new BigDecimal(value).setScale(precision, RoundingMode.CEILING).doubleValue();
 	}
-	
-	public static String locationToString(NMEA.GPSPosition location) {
-		return SimpleDateFormat.getTimeInstance().format(new Date((long)location.time)) + " " + Utils.round(location.lat) + ", " + Utils.round(location.lon) + " " + location.quality + " " + location.velocity + "\n";
-	}
-	
-	/*public static boolean areLocationsDifferent(final NMEA.GPSPosition loc1, final NMEA.GPSPosition loc2, final int precision) {
-		final boolean latDiff = round(loc1.lat,precision) != round(loc2.lat,precision);
-		final boolean longDiff = round(loc1.lon,precision) != round(loc2.lon,precision);
-		return latDiff || longDiff;
-	}*/
 
-	public static boolean areLocationsDifferent(final NMEA.GPSPosition loc1, final NMEA.GPSPosition loc2) {
-		// There needs to be a small but significant difference to say the position has changed.
-		return Math.abs(loc1.lat - loc2.lat) >= 0.001 || Math.abs(loc1.lon - loc2.lon) >= 0.001;
+	public static boolean areLocationsDifferent(final Position loc1, final Position loc2, long threshold) {
+		// https://www.javadoc.io/static/net.sf.marineapi/marineapi/0.11.0/net/sf/marineapi/nmea/util/Position.html
+		// distanceTo returns distance in meters
+		return loc1.distanceTo(loc2) >= threshold;
 	}
 
 	public static String formatDate(Date date) {

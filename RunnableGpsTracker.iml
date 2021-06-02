@@ -9,7 +9,8 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Maven: com.fazecast:jSerialComm:2.5.3" level="project" />
+    <orderEntry type="library" name="Maven: com.fazecast:jSerialComm:2.7.0" level="project" />
     <orderEntry type="library" name="Maven: org.json:json:20210307" level="project" />
+    <orderEntry type="library" name="Maven: net.sf.marineapi:marineapi:0.11.0" level="project" />
   </component>
 </module>
